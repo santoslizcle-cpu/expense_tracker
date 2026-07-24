@@ -430,6 +430,134 @@
       <button class="primary" id="saveSettings" style="flex:1;">Guardar</button>
     </div>
     <div id="settingsStatus"></div>
+
+    <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;">
+      <button class="secondary" id="openSetup" style="width:100%;">Valores iniciales</button>
+      <button class="secondary" id="openRecurringList" style="width:100%;">Bills recurrentes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Starting Values / Setup Sheet -->
+<div class="sheet-overlay" id="setupOverlay">
+  <div class="sheet">
+    <button class="close-x" id="closeSetup">&#10005;</button>
+    <h2>Valores iniciales</h2>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:-8px;">
+      El mes de referencia es el punto fijo desde el que se calculan todos los demás meses. Los valores por defecto se usan en cualquier mes que no tenga su propio ajuste.
+    </p>
+    <div class="field">
+      <label>Mes de referencia</label>
+      <div style="display:flex;gap:8px;">
+        <select id="setupAnchorMonthName" style="flex:2;">
+          <option>Enero</option><option>Febrero</option><option>Marzo</option><option>Abril</option>
+          <option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option>
+          <option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
+        </select>
+        <input type="number" inputmode="numeric" id="setupAnchorMonthYear" placeholder="Año" style="flex:1;">
+      </div>
+    </div>
+    <div class="field">
+      <label>Saldo inicial de Savings</label>
+      <input type="number" inputmode="decimal" step="0.01" id="setupAnchorSavings">
+    </div>
+    <div class="field">
+      <label>Deuda inicial de tarjeta</label>
+      <input type="number" inputmode="decimal" step="0.01" id="setupAnchorCcOwed">
+    </div>
+    <div class="field">
+      <label>Salario por defecto</label>
+      <input type="number" inputmode="decimal" step="0.01" id="setupSalary">
+    </div>
+    <div class="field">
+      <label>Límite de tarjeta</label>
+      <input type="number" inputmode="decimal" step="0.01" id="setupCcLimit">
+    </div>
+    <div class="field">
+      <label>Fee de tarjeta por defecto</label>
+      <input type="number" inputmode="decimal" step="0.01" id="setupCcFee">
+    </div>
+    <div class="field">
+      <label>Pago de tarjeta por defecto</label>
+      <input type="number" inputmode="decimal" step="0.01" id="setupCcPayment">
+    </div>
+    <div class="sheet-actions">
+      <button class="secondary" id="cancelSetup">Cancelar</button>
+      <button class="primary" id="saveSetup">Guardar</button>
+    </div>
+    <div id="setupStatus"></div>
+  </div>
+</div>
+
+<!-- Recurring Bills List Sheet -->
+<div class="sheet-overlay" id="recurringListOverlay">
+  <div class="sheet">
+    <button class="close-x" id="closeRecurringList">&#10005;</button>
+    <h2>Bills recurrentes</h2>
+    <div id="recurringListContent"><div class="loading">Cargando...</div></div>
+    <div class="sheet-actions">
+      <button class="primary" id="addRecurringBillBtn" style="flex:1;">+ Añadir bill recurrente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Recurring Bill Edit/Create Sheet -->
+<div class="sheet-overlay" id="recurringEditOverlay">
+  <div class="sheet">
+    <button class="close-x" id="closeRecurringEdit">&#10005;</button>
+    <h2 id="recurringEditTitle">Nueva bill recurrente</h2>
+    <div class="field">
+      <label>Día del mes</label>
+      <input type="number" inputmode="numeric" min="1" max="31" id="recDay">
+    </div>
+    <div class="field">
+      <label>Descripción</label>
+      <input type="text" id="recDesc" placeholder="Ej. Netflix">
+    </div>
+    <div class="field">
+      <label>Categoría</label>
+      <select id="recCategory">
+        <option>Housing</option>
+        <option>Debt</option>
+        <option>Education</option>
+        <option>Family</option>
+        <option>Subscriptions</option>
+        <option>Health</option>
+        <option>Utilities</option>
+        <option>Food</option>
+        <option>Savings</option>
+        <option>Transport</option>
+        <option>Insurance</option>
+        <option>Travel</option>
+        <option>Personal</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Monto por defecto</label>
+      <input type="number" inputmode="decimal" step="0.01" id="recAmount">
+    </div>
+    <div class="field">
+      <label>Pagar desde</label>
+      <div class="source-grid">
+        <div class="source-opt sel" data-rec-src="Checking">Checking</div>
+        <div class="source-opt" data-rec-src="Savings">Savings</div>
+        <div class="source-opt" data-rec-src="Credit Card">Credit card</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Es envelope de ahorro?</label>
+      <div class="paid-grid">
+        <div class="paid-opt sel" data-rec-envelope="N">No</div>
+        <div class="paid-opt" data-rec-envelope="Y">Sí</div>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="secondary" id="cancelRecurringEdit">Cancelar</button>
+      <button class="primary" id="saveRecurringEdit">Guardar</button>
+    </div>
+    <button class="secondary" id="deleteRecurringEdit" style="width:100%;margin-top:10px;color:var(--bad);border-color:var(--bad);display:none;">Eliminar esta bill</button>
+    <div id="recurringEditStatus"></div>
   </div>
 </div>
 

@@ -508,6 +508,199 @@ document.getElementById('saveSettings').addEventListener('click', () => {
   }, 500);
 });
 
+// ---------- Starting Values / Setup sheet ----------
+const setupOverlay = document.getElementById('setupOverlay');
+
+document.getElementById('openSetup').addEventListener('click', async () => {
+  settingsOverlay.classList.remove('show');
+  setupOverlay.classList.add('show');
+  const statusEl = document.getElementById('setupStatus');
+  statusEl.innerHTML = '<div class="loading" style="padding:12px 0;">Cargando...</div>';
+  try {
+    const data = await apiGet('getSetup');
+    const s = (data && data.settings) || {};
+    const [monthName, monthYear] = String(s.AnchorMonth || '').split(' ');
+    document.getElementById('setupAnchorMonthName').value = monthName || MESES_ES[0];
+    document.getElementById('setupAnchorMonthYear').value = monthYear || new Date().getFullYear();
+    document.getElementById('setupAnchorSavings').value = s.AnchorSavingsEnd != null ? s.AnchorSavingsEnd : '';
+    document.getElementById('setupAnchorCcOwed').value = s.AnchorCcOwedEnd != null ? s.AnchorCcOwedEnd : '';
+    document.getElementById('setupSalary').value = s.DefaultSalary != null ? s.DefaultSalary : '';
+    document.getElementById('setupCcLimit').value = s.DefaultCcLimit != null ? s.DefaultCcLimit : '';
+    document.getElementById('setupCcFee').value = s.DefaultCcFee != null ? s.DefaultCcFee : '';
+    document.getElementById('setupCcPayment').value = s.DefaultCcPayment != null ? s.DefaultCcPayment : '';
+    statusEl.innerHTML = '';
+  } catch (err) {
+    statusEl.innerHTML = `<div class="status-msg error">No se pudo cargar: ${escapeHtml(err.message)}</div>`;
+  }
+});
+document.getElementById('closeSetup').addEventListener('click', () => setupOverlay.classList.remove('show'));
+document.getElementById('cancelSetup').addEventListener('click', () => setupOverlay.classList.remove('show'));
+
+document.getElementById('saveSetup').addEventListener('click', async () => {
+  const statusEl = document.getElementById('setupStatus');
+  const monthName = document.getElementById('setupAnchorMonthName').value;
+  const monthYear = parseInt(document.getElementById('setupAnchorMonthYear').value, 10);
+  const fields = {
+    AnchorSavingsEnd: document.getElementById('setupAnchorSavings').value,
+    AnchorCcOwedEnd: document.getElementById('setupAnchorCcOwed').value,
+    DefaultSalary: document.getElementById('setupSalary').value,
+    DefaultCcLimit: document.getElementById('setupCcLimit').value,
+    DefaultCcFee: document.getElementById('setupCcFee').value,
+    DefaultCcPayment: document.getElementById('setupCcPayment').value
+  };
+  if (!monthName || isNaN(monthYear) || Object.values(fields).some(v => v === '' || isNaN(parseFloat(v)))) {
+    statusEl.innerHTML = '<div class="status-msg error">Completa todos los campos con valores válidos.</div>';
+    return;
+  }
+
+  const changes = { AnchorMonth: `${monthName} ${monthYear}` };
+  Object.keys(fields).forEach(key => { changes[key] = parseFloat(fields[key]); });
+
+  statusEl.innerHTML = '<div class="loading" style="padding:12px 0;">Guardando...</div>';
+  try {
+    await apiPost('setSettings', { changes });
+    setupOverlay.classList.remove('show');
+    init();
+  } catch (err) {
+    statusEl.innerHTML = `<div class="status-msg error">No se pudo guardar: ${escapeHtml(err.message)}</div>`;
+  }
+});
+
+// ---------- Recurring Bills manager ----------
+const recurringListOverlay = document.getElementById('recurringListOverlay');
+const recurringEditOverlay = document.getElementById('recurringEditOverlay');
+let recurringBillsCache = [];
+let editingRecurringBillId = null;
+let selectedRecSource = 'Checking';
+let selectedRecEnvelope = 'N';
+
+async function loadRecurringList() {
+  const content = document.getElementById('recurringListContent');
+  content.innerHTML = '<div class="loading">Cargando...</div>';
+  try {
+    const data = await apiGet('getSetup');
+    recurringBillsCache = ((data && data.bills) || []).slice().sort(sortByDayAsc);
+    if (!recurringBillsCache.length) {
+      content.innerHTML = '<div class="empty-state" style="margin:8px 0;">No hay bills recurrentes todavía.</div>';
+      return;
+    }
+    content.innerHTML = '<div class="bills-list">' + recurringBillsCache.map(b => {
+      const icon = CATEGORY_ICON[b.Category] || CATEGORY_ICON.Other;
+      return `
+        <div class="bill-row" data-rec-edit-id="${escapeHtml(b.BillID)}">
+          <div class="day-badge">${typeof b.Day === 'number' ? b.Day : '·'}</div>
+          <div class="bill-info">
+            <p class="bill-desc">${icon} ${escapeHtml(b.Description || '')}</p>
+            <p class="bill-meta">${escapeHtml(b.Category || '')} · ${escapeHtml(b['Source Account'] || '')}</p>
+          </div>
+          <div class="bill-amt">${money(b['Default Amount'])}</div>
+        </div>`;
+    }).join('') + '</div>';
+    content.querySelectorAll('[data-rec-edit-id]').forEach(el => {
+      el.addEventListener('click', () => openRecurringEditSheet(el.getAttribute('data-rec-edit-id')));
+    });
+  } catch (err) {
+    content.innerHTML = `<div class="status-msg error">No se pudo cargar: ${escapeHtml(err.message)}</div>`;
+  }
+}
+function sortByDayAsc(a, b) {
+  const da = (typeof a.Day === 'number') ? a.Day : 999;
+  const db = (typeof b.Day === 'number') ? b.Day : 999;
+  return da - db;
+}
+
+document.getElementById('openRecurringList').addEventListener('click', () => {
+  settingsOverlay.classList.remove('show');
+  recurringListOverlay.classList.add('show');
+  loadRecurringList();
+});
+document.getElementById('closeRecurringList').addEventListener('click', () => recurringListOverlay.classList.remove('show'));
+document.getElementById('addRecurringBillBtn').addEventListener('click', () => openRecurringEditSheet(null));
+
+function openRecurringEditSheet(billId) {
+  const bill = billId ? recurringBillsCache.find(b => b.BillID === billId) : null;
+  editingRecurringBillId = billId;
+  document.getElementById('recurringEditTitle').textContent = bill ? 'Editar bill recurrente' : 'Nueva bill recurrente';
+  document.getElementById('recDay').value = bill && typeof bill.Day === 'number' ? bill.Day : '';
+  document.getElementById('recDesc').value = bill ? bill.Description || '' : '';
+  document.getElementById('recCategory').value = bill ? bill.Category || 'Other' : 'Housing';
+  document.getElementById('recAmount').value = bill ? bill['Default Amount'] || '' : '';
+  selectedRecSource = bill ? bill['Source Account'] || 'Checking' : 'Checking';
+  selectedRecEnvelope = bill ? (bill.Envelope === 'Y' ? 'Y' : 'N') : 'N';
+  recurringEditOverlay.querySelectorAll('[data-rec-src]').forEach(o => o.classList.toggle('sel', o.getAttribute('data-rec-src') === selectedRecSource));
+  recurringEditOverlay.querySelectorAll('[data-rec-envelope]').forEach(o => o.classList.toggle('sel', o.getAttribute('data-rec-envelope') === selectedRecEnvelope));
+  document.getElementById('deleteRecurringEdit').style.display = bill ? 'block' : 'none';
+  document.getElementById('recurringEditStatus').innerHTML = '';
+  recurringListOverlay.classList.remove('show');
+  recurringEditOverlay.classList.add('show');
+}
+document.getElementById('closeRecurringEdit').addEventListener('click', () => recurringEditOverlay.classList.remove('show'));
+document.getElementById('cancelRecurringEdit').addEventListener('click', () => recurringEditOverlay.classList.remove('show'));
+
+recurringEditOverlay.querySelectorAll('[data-rec-src]').forEach(opt => {
+  opt.addEventListener('click', () => {
+    selectedRecSource = opt.getAttribute('data-rec-src');
+    recurringEditOverlay.querySelectorAll('[data-rec-src]').forEach(o => o.classList.toggle('sel', o === opt));
+  });
+});
+recurringEditOverlay.querySelectorAll('[data-rec-envelope]').forEach(opt => {
+  opt.addEventListener('click', () => {
+    selectedRecEnvelope = opt.getAttribute('data-rec-envelope');
+    recurringEditOverlay.querySelectorAll('[data-rec-envelope]').forEach(o => o.classList.toggle('sel', o === opt));
+  });
+});
+
+document.getElementById('saveRecurringEdit').addEventListener('click', async () => {
+  const statusEl = document.getElementById('recurringEditStatus');
+  const day = parseInt(document.getElementById('recDay').value, 10);
+  const desc = document.getElementById('recDesc').value.trim();
+  const category = document.getElementById('recCategory').value;
+  const amount = parseFloat(document.getElementById('recAmount').value);
+
+  if (!desc || isNaN(day) || day < 1 || day > 31 || isNaN(amount) || amount < 0) {
+    statusEl.innerHTML = '<div class="status-msg error">Completa el día, descripción y un monto válido.</div>';
+    return;
+  }
+
+  const bill = {
+    Day: day,
+    Category: category,
+    Description: desc,
+    'Default Amount': amount,
+    'Source Account': selectedRecSource,
+    Envelope: selectedRecEnvelope
+  };
+
+  statusEl.innerHTML = '<div class="loading" style="padding:12px 0;">Guardando...</div>';
+  try {
+    if (editingRecurringBillId) {
+      await apiPost('updateRecurringBill', { billId: editingRecurringBillId, changes: bill });
+    } else {
+      await apiPost('addRecurringBill', { bill });
+    }
+    recurringEditOverlay.classList.remove('show');
+    recurringListOverlay.classList.add('show');
+    loadRecurringList();
+  } catch (err) {
+    statusEl.innerHTML = `<div class="status-msg error">No se pudo guardar: ${escapeHtml(err.message)}</div>`;
+  }
+});
+
+document.getElementById('deleteRecurringEdit').addEventListener('click', async () => {
+  if (!editingRecurringBillId) return;
+  if (!confirm('¿Eliminar esta bill recurrente? Los meses que ya la copiaron no cambian.')) return;
+  const statusEl = document.getElementById('recurringEditStatus');
+  statusEl.innerHTML = '<div class="loading" style="padding:12px 0;">Eliminando...</div>';
+  try {
+    await apiPost('deleteRecurringBill', { billId: editingRecurringBillId });
+    recurringEditOverlay.classList.remove('show');
+    recurringListOverlay.classList.add('show');
+    loadRecurringList();
+  } catch (err) {
+    statusEl.innerHTML = `<div class="status-msg error">No se pudo eliminar: ${escapeHtml(err.message)}</div>`;
+  }
+});
+
 // ---------- Init ----------
 function init() {
   const cfg = getConfig();

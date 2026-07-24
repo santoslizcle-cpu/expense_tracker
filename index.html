@@ -47,7 +47,8 @@
   .topbar{
     background:var(--ink);
     color:var(--paper);
-    padding:calc(14px + env(safe-area-inset-top)) 20px 20px;
+    padding:20px 20px;
+    padding-top:max(44px, calc(env(safe-area-inset-top) + 14px));
     display:flex;
     align-items:center;
     justify-content:space-between;

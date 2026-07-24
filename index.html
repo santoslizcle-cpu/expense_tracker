@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ledger</title>
+<meta name="theme-color" content="#152521">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#152521;
+    --ink-soft:#2A3E39;
+    --paper:#FAF7F0;
+    --paper-dim:#F0ECE1;
+    --line:#E3DDCC;
+    --brass:#C89B3C;
+    --brass-dim:#E9D9AE;
+    --good:#3F7A5C;
+    --bad:#B5533C;
+    --muted:#7C8983;
+    --radius:16px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--ink);}
+  body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+  }
+  #app{
+    width:100%;
+    max-width:480px;
+    min-height:100vh;
+    background:var(--paper);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    padding-bottom:88px;
+  }
+  .topbar{
+    background:var(--ink);
+    color:var(--paper);
+    padding:22px 20px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+  .month-nav{display:flex;align-items:center;gap:10px;}
+  .month-nav button{
+    background:none;border:none;color:var(--brass);font-size:20px;padding:4px 8px;cursor:pointer;
+    font-family:inherit;
+  }
+  .month-nav button:disabled{color:rgba(201,155,60,0.3);cursor:default;}
+  .month-label{font-family:'Lora',serif;font-weight:600;font-size:19px;letter-spacing:0.2px;}
+  .anchor-badge{
+    display:inline-block;
+    font-family:'Inter',sans-serif;
+    font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--ink);background:var(--brass);border-radius:20px;padding:2px 7px;
+    vertical-align:middle;margin-left:6px;
+  }
+  .gear-btn{background:none;border:1px solid rgba(250,247,240,0.25);color:var(--paper);
+    width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer;}
+
+  .accounts-row{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    padding:16px 16px 4px;
+  }
+  .acct-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px 8px;
+    text-align:left;
+    cursor:pointer;
+  }
+  .acct-card .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 4px;font-weight:600;}
+  .acct-card .val{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .acct-card.checking{border-top:3px solid var(--ink-soft);}
+  .acct-card.savings{border-top:3px solid var(--good);}
+  .acct-card.cc{border-top:3px solid var(--brass);}
+  .acct-card.active{background:var(--paper-dim);border-color:var(--ink);}
+
+  .month-adjust{
+    margin:6px 16px 0;
+    text-align:right;
+  }
+  .month-adjust button{
+    background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;
+    cursor:pointer;font-family:'Inter',sans-serif;text-decoration:underline;padding:4px 0;
+  }
+
+  .filter-bar{
+    margin:8px 16px 0;
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:12.5px;color:var(--muted);
+  }
+  .filter-bar button{background:none;border:none;color:var(--ink);font-weight:600;font-size:12.5px;cursor:pointer;text-decoration:underline;}
+
+  .section-label{
+    padding:18px 20px 6px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--muted);
+    font-weight:600;
+  }
+
+  .bills-list{padding:0 16px;display:flex;flex-direction:column;gap:8px;}
+  .bill-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:11px 12px;
+    cursor:pointer;
+  }
+  .bill-row.extra{border-style:dashed;}
+  .bill-row.paid{opacity:0.55;}
+  .day-badge{
+    width:32px;height:32px;flex-shrink:0;
+    border-radius:50%;
+    background:var(--paper-dim);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;font-weight:600;color:var(--ink-soft);
+  }
+  .bill-info{flex:1;min-width:0;}
+  .bill-desc{font-size:14px;font-weight:600;margin:0;color:var(--ink);}
+  .bill-meta{font-size:11.5px;color:var(--muted);margin:2px 0 0;}
+  .bill-amt{font-family:'IBM Plex Mono',monospace;font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .paid-check{
+    width:22px;height:22px;border-radius:50%;flex-shrink:0;
+    border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:transparent;
+  }
+  .paid-check.on{background:var(--good);border-color:var(--good);color:#fff;}
+
+  .empty-state{
+    margin:24px 20px;
+    padding:28px 20px;
+    text-align:center;
+    background:#fff;
+    border:1px dashed var(--line);
+    border-radius:14px;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .empty-state button{margin-top:14px;}
+
+  button.primary{
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    padding:12px 18px;
+    border-radius:10px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+  button.secondary{
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink);
+    padding:11px 18px;
+    border-radius:10px;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+  }
+
+  .fab{
+    position:fixed;
+    bottom:76px;left:50%;
+    transform:translateX(-50%);
+    width:min(448px,calc(100vw - 32px));
+    z-index:10;
+  }
+  .fab-inner{max-width:480px;margin:0 auto;padding:0 16px;}
+  .fab button{
+    width:100%;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    background:var(--ink);color:var(--paper);
+    border:none;border-radius:14px;
+    padding:15px;font-size:15px;font-weight:600;font-family:'Inter',sans-serif;
+    box-shadow:0 8px 24px rgba(21,37,33,0.35);
+    cursor:pointer;
+  }
+
+  .sheet-overlay{
+    position:fixed;inset:0;background:rgba(21,37,33,0.5);
+    display:none;align-items:flex-end;justify-content:center;z-index:20;
+  }
+  .sheet-overlay.show{display:flex;}
+  .sheet{
+    background:var(--paper);
+    width:100%;max-width:480px;
+    border-radius:20px 20px 0 0;
+    padding:20px 20px calc(24px + env(safe-area-inset-bottom));
+    max-height:88vh;overflow-y:auto;
+  }
+  .sheet h2{font-family:'Lora',serif;font-size:19px;margin:0 0 16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;}
+  .field input, .field select{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:15px;font-family:'Inter',sans-serif;background:#fff;color:var(--ink);
+  }
+  .field-hint{font-size:11.5px;color:var(--muted);margin:-8px 0 14px;}
+  .source-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .source-opt{
+    text-align:center;padding:11px 4px;border-radius:10px;border:1.5px solid var(--line);
+    font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted);
+  }
+  .source-opt.sel{border-color:var(--ink);color:var(--ink);background:var(--paper-dim);}
+  .paid-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .paid-opt{
+    text-align:center;padding:11px 4px;border-radius:10px;border:1.5px solid var(--line);
+    font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted);
+  }
+  .paid-opt.sel{border-color:var(--ink);color:var(--ink);background:var(--paper-dim);}
+  .sheet-actions{display:flex;gap:10px;margin-top:18px;}
+  .sheet-actions button{flex:1;}
+  .close-x{position:absolute;top:16px;right:16px;background:none;border:none;font-size:18px;color:var(--muted);cursor:pointer;}
+
+  .forecast-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:10px;margin:0 16px 8px;
+  }
+  .forecast-month{font-size:13.5px;font-weight:600;}
+  .forecast-vals{display:flex;gap:14px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+  .forecast-vals b{color:var(--ink);font-weight:600;}
+
+  .bottom-nav{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:480px;
+    background:var(--paper);border-top:1px solid var(--line);
+    display:flex;
+    padding-bottom:env(safe-area-inset-bottom);
+    z-index:9;
+  }
+  .bottom-nav button{
+    flex:1;background:none;border:none;padding:10px 0 8px;
+    font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-family:'Inter',sans-serif;
+  }
+  .bottom-nav button.active{color:var(--ink);}
+  .bottom-nav .icon{font-size:17px;}
+
+  .status-msg{
+    margin:14px 20px;padding:11px 14px;border-radius:10px;font-size:13px;
+  }
+  .status-msg.error{background:#F8E4DC;color:var(--bad);}
+  .status-msg.ok{background:#E1EEE6;color:var(--good);}
+
+  .loading{padding:60px 20px;text-align:center;color:var(--muted);font-size:14px;}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="month-nav">
+      <button id="prevMonth" aria-label="Mes anterior">&#8249;</button>
+      <span class="month-label" id="monthLabel">&nbsp;</span>
+      <button id="nextMonth" aria-label="Mes siguiente">&#8250;</button>
+    </div>
+    <button class="gear-btn" id="openSettings" aria-label="Ajustes">&#9881;</button>
+  </div>
+
+  <div id="mainContent">
+    <div class="loading">Cargando...</div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active" data-view="month"><span class="icon">&#128203;</span>Mes</button>
+    <button class="nav-btn" data-view="forecast"><span class="icon">&#128202;</span>Resumen</button>
+  </div>
+
+  <div class="fab" id="fabAdd" style="display:none;">
+    <div class="fab-inner">
+      <button id="addExtraBtn">+ Añadir gasto extra</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Extra Expense Sheet -->
+<div class="sheet-overlay" id="extraOverlay">
+  <div class="sheet">
+    <button class="close-x" id="closeExtra">&#10005;</button>
+    <h2>Nuevo gasto</h2>
+    <div class="field">
+      <label>Descripción</label>
+      <input type="text" id="extraDesc" placeholder="Ej. Regalo de cumpleaños">
+    </div>
+    <div class="field">
+      <label>Categoría</label>
+      <select id="extraCategory">
+        <option>Personal</option>
+        <option>Food</option>
+        <option>Family</option>
+        <option>Travel</option>
+        <option>Health</option>
+        <option>Housing</option>
+        <option>Transport</option>
+        <option>Subscriptions</option>
+        <option>Insurance</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Monto</label>
+      <input type="number" inputmode="decimal" step="0.01" id="extraAmount" placeholder="0.00">
+    </div>
+    <div class="field">
+      <label>Pagar desde</label>
+      <div class="source-grid">
+        <div class="source-opt sel" data-src="Checking">Checking</div>
+        <div class="source-opt" data-src="Savings">Savings</div>
+        <div class="source-opt" data-src="Credit Card">Credit card</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Estado</label>
+      <div class="paid-grid">
+        <div class="paid-opt" data-extra-paid="N">Pendiente</div>
+        <div class="paid-opt sel" data-extra-paid="Y">Pagado</div>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="secondary" id="cancelExtra">Cancelar</button>
+      <button class="primary" id="saveExtra">Guardar gasto</button>
+    </div>
+    <div id="extraStatus"></div>
+  </div>
+</div>
+
+<!-- Edit Bill Sheet -->
+<div class="sheet-overlay" id="editOverlay">
+  <div class="sheet">
+    <button class="close-x" id="closeEdit">&#10005;</button>
+    <h2 id="editTitle">Editar</h2>
+    <div class="field">
+      <label>Monto</label>
+      <input type="number" inputmode="decimal" step="0.01" id="editAmount" placeholder="0.00">
+    </div>
+    <div class="field">
+      <label>Estado</label>
+      <div class="paid-grid">
+        <div class="paid-opt" data-paid="N">Pendiente</div>
+        <div class="paid-opt" data-paid="Y">Pagado</div>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="secondary" id="cancelEdit">Cancelar</button>
+      <button class="primary" id="saveEdit">Guardar</button>
+    </div>
+    <div id="editStatus"></div>
+  </div>
+</div>
+
+<!-- Adjust Month Sheet (salary / CC fee / CC payment / CC limit for this month onward) -->
+<div class="sheet-overlay" id="monthSettingsOverlay">
+  <div class="sheet">
+    <button class="close-x" id="closeMonthSettings">&#10005;</button>
+    <h2 id="monthSettingsTitle">Ajustar mes</h2>
+    <div class="field">
+      <label>Salario</label>
+      <input type="number" inputmode="decimal" step="0.01" id="msSalary">
+    </div>
+    <div class="field">
+      <label>Pago tarjeta este mes</label>
+      <input type="number" inputmode="decimal" step="0.01" id="msCcPayment">
+    </div>
+    <div class="field">
+      <label>Fee tarjeta este mes</label>
+      <input type="number" inputmode="decimal" step="0.01" id="msCcFee">
+    </div>
+    <div class="field">
+      <label>Límite de crédito</label>
+      <input type="number" inputmode="decimal" step="0.01" id="msCcLimit">
+    </div>
+    <div class="field-hint">Solo afecta este mes en adelante — los meses anteriores no cambian.</div>
+    <div class="sheet-actions">
+      <button class="secondary" id="cancelMonthSettings">Cancelar</button>
+      <button class="primary" id="saveMonthSettings">Guardar</button>
+    </div>
+    <div id="monthSettingsStatus"></div>
+  </div>
+</div>
+
+<!-- Settings Sheet -->
+<div class="sheet-overlay" id="settingsOverlay">
+  <div class="sheet">
+    <button class="close-x" id="closeSettings">&#10005;</button>
+    <h2>Ajustes</h2>
+    <div class="field">
+      <label>URL de la Web App (Apps Script)</label>
+      <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <div class="field">
+      <label>Passcode</label>
+      <input type="text" id="apiKeyInput" placeholder="Tu passcode">
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:-4px;">
+      La URL viene de Deploy → Web app en Apps Script. El passcode es el que configuraste con setAccessKey en el script. Ambos se guardan solo en este teléfono.
+    </p>
+    <div class="sheet-actions">
+      <button class="primary" id="saveSettings" style="flex:1;">Guardar</button>
+    </div>
+    <div id="settingsStatus"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -331,6 +331,31 @@ nextBtn.addEventListener('click', () => {
   loadMonth(shiftMonthLabel(state.currentMonth, 1));
 });
 
+// ---------- Swipe left/right to change months ----------
+let swipeStartX = null;
+let swipeStartY = null;
+
+document.addEventListener('touchstart', (e) => {
+  if (state.view !== 'month' || e.target.closest('.sheet-overlay.show')) {
+    swipeStartX = null;
+    return;
+  }
+  swipeStartX = e.touches[0].clientX;
+  swipeStartY = e.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchend', (e) => {
+  if (swipeStartX === null) return;
+  const dx = e.changedTouches[0].clientX - swipeStartX;
+  const dy = e.changedTouches[0].clientY - swipeStartY;
+  swipeStartX = null;
+  swipeStartY = null;
+
+  const SWIPE_THRESHOLD = 60;
+  if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.5) return; // too short, or more vertical than horizontal
+  if (dx < 0) nextBtn.click(); else prevBtn.click();
+}, { passive: true });
+
 // ---------- Add Extra sheet ----------
 const extraOverlay = document.getElementById('extraOverlay');
 let selectedSource = 'Checking';
